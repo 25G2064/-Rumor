@@ -11,12 +11,9 @@ WIDTH = 50
 HEIGHT = 50
 AGENTS_NUMBER = 300
 
-# 噂A（正しい情報）
-INITIAL_SPREADER_A = 1
-RUMOR_A_START = 50
-
-# 噂B（デマ）
-INITIAL_SPREADER_B = 3
+INITIAL_FALSE_SPREADER = 3
+INITIAL_TRUE_SPREADER = 1
+TRUE_RUMOR_START = 50
 
 RUMOR_RADIUS = 3.0
 BASE_SPREAD_PROBABILITY = 0.1
@@ -24,10 +21,14 @@ BASE_FORGET_TIME = 30
 SIMULATION_TIME = 200
 AGENT_SPEED = 1.0
 
-# 状態
+# ================================
+# 状態（5種類）
+# ================================
 IGNORANT = 0
-SPREADER = 1
-STIFLER = 2
+FALSE_SPREADER = 1
+FALSE_BELIEVER = 2
+TRUE_SPREADER = 3
+TRUE_BELIEVER = 4
 
 # ================================
 # エージェント定義
@@ -37,15 +38,11 @@ class Agent:
         self.x = x
         self.y = y
 
-        # 噂A（正しい情報）
-        self.state_A = IGNORANT
-        self.rumor_time_A = -1
-        self.interest_A = np.random.uniform(0.0, 2.0)
+        self.state = IGNORANT
+        self.rumor_time = -1
 
-        # 噂B（デマ）
-        self.state_B = IGNORANT
-        self.rumor_time_B = -1
-        self.interest_B = np.random.uniform(0.0, 2.0)
+        self.interest = np.random.uniform(0.0, 2.0)
+        self.influence = np.random.uniform(0.5, 2.0)
 
     def move(self):
         angle = np.random.rand() * 2 * np.pi
@@ -64,70 +61,85 @@ def initialize_simulation():
         y = np.random.rand() * HEIGHT
         agents.append(Agent(x, y))
 
-    # デマ（噂B）だけ最初に流す
-    idx_B = np.random.choice(AGENTS_NUMBER, INITIAL_SPREADER_B, replace=False)
-    for i in idx_B:
-        agents[i].state_B = SPREADER
-        agents[i].rumor_time_B = 0
+    # 嘘の噂を最初に流す
+    idx = np.random.choice(AGENTS_NUMBER, INITIAL_FALSE_SPREADER, replace=False)
+    for i in idx:
+        agents[i].state = FALSE_SPREADER
+        agents[i].rumor_time = 0
 
     return agents
 
 # ================================
-# 噂伝播
+# 嘘の噂の伝播
 # ================================
-def spread_rumor_A(a1, a2, frame):
-    if a2.state_A == IGNORANT:
+def spread_false(a1, a2, frame):
+    if a1.state == FALSE_SPREADER and a2.state == IGNORANT:
+        # ★ 影響力で半径を拡張
+        effective_radius = RUMOR_RADIUS * a1.influence
+
         dist = np.hypot(a1.x - a2.x, a1.y - a2.y)
-        prob = BASE_SPREAD_PROBABILITY * a1.interest_A
-        if dist < RUMOR_RADIUS and np.random.rand() < prob:
-            a2.state_A = SPREADER
-            a2.rumor_time_A = frame
+        prob = BASE_SPREAD_PROBABILITY * a1.interest * a1.influence
 
-def spread_rumor_B(a1, a2, frame):
-    if a2.state_B == IGNORANT:
+        if dist < effective_radius and np.random.rand() < prob:
+            if a2.interest > 1.0:
+                a2.state = FALSE_SPREADER
+            else:
+                a2.state = FALSE_BELIEVER
+            a2.rumor_time = frame
+
+# ================================
+# 正しい噂の伝播
+# ================================
+def spread_true(a1, a2, frame):
+    if a1.state == TRUE_SPREADER and a2.state in (IGNORANT, FALSE_BELIEVER):
+
+        # ★ 影響力で半径を拡張
+        effective_radius = RUMOR_RADIUS * a1.influence
+
         dist = np.hypot(a1.x - a2.x, a1.y - a2.y)
-        prob = BASE_SPREAD_PROBABILITY * a1.interest_B
-        if dist < RUMOR_RADIUS and np.random.rand() < prob:
-            a2.state_B = SPREADER
-            a2.rumor_time_B = frame
+        prob = BASE_SPREAD_PROBABILITY * a1.interest * a1.influence * 1.2
+
+        if dist < effective_radius and np.random.rand() < prob:
+            if a2.interest > 1.0:
+                a2.state = TRUE_SPREADER
+            else:
+                a2.state = TRUE_BELIEVER
+            a2.rumor_time = frame
 
 # ================================
-# 忘却（Stifler化）
+# 嘘の噂を否定（正しい噂を知ったら上書き）
 # ================================
-def check_stifler_A(agent, frame):
-    if agent.state_A == SPREADER:
-        forget = BASE_FORGET_TIME * (0.5 + agent.interest_A)
-        if frame - agent.rumor_time_A > forget:
-            agent.state_A = STIFLER
-
-def check_stifler_B(agent, frame):
-    if agent.state_B == SPREADER:
-        forget = BASE_FORGET_TIME * (0.5 + agent.interest_B)
-        if frame - agent.rumor_time_B > forget:
-            agent.state_B = STIFLER
+def correct_false(agent):
+    if agent.state in (TRUE_SPREADER, TRUE_BELIEVER):
+        if agent.state == FALSE_SPREADER or agent.state == FALSE_BELIEVER:
+            agent.state = TRUE_BELIEVER
 
 # ================================
-# 色決定（白背景で見やすい配色）
+# 忘却（広めるのをやめる）
+# ================================
+def update_state(agent, frame):
+    if agent.state == FALSE_SPREADER:
+        if frame - agent.rumor_time > BASE_FORGET_TIME * (0.5 + agent.interest):
+            agent.state = FALSE_BELIEVER
+
+    if agent.state == TRUE_SPREADER:
+        if frame - agent.rumor_time > BASE_FORGET_TIME * (0.5 + agent.interest):
+            agent.state = TRUE_BELIEVER
+
+# ================================
+# 色決定
 # ================================
 def get_color(agent):
-    # 両方広めている → 濃い紫
-    if agent.state_A == SPREADER and agent.state_B == SPREADER:
-        return "#800080"
-
-    # 正しい噂A → 鮮やかな赤
-    if agent.state_A == SPREADER:
-        return "#E60026"
-
-    # デマB → 濃い青
-    if agent.state_B == SPREADER:
-        return "#0072B2"
-
-    # どちらも知らない → グレー
-    if agent.state_A == IGNORANT and agent.state_B == IGNORANT:
+    if agent.state == IGNORANT:
         return "#999999"
-
-    # Stifler → 緑
-    return "#009E73"
+    if agent.state == FALSE_SPREADER:
+        return "#0072B2"
+    if agent.state == FALSE_BELIEVER:
+        return "#99C2FF"
+    if agent.state == TRUE_SPREADER:
+        return "#E60026"
+    if agent.state == TRUE_BELIEVER:
+        return "#FF99A0"
 
 # ================================
 # シミュレーション本体
@@ -136,18 +148,16 @@ def run_simulation():
     agents = initialize_simulation()
     history = []
 
-    # 人数推移記録
-    count_A_I, count_A_S, count_A_T = [], [], []
-    count_B_I, count_B_S, count_B_T = [], [], []
+    count_I, count_FS, count_FB, count_TS, count_TB = [], [], [], [], []
 
     for frame in range(SIMULATION_TIME):
 
-        # 正しい噂Aを遅れて流す
-        if frame == RUMOR_A_START:
-            idx_A = np.random.choice(AGENTS_NUMBER, INITIAL_SPREADER_A, replace=False)
-            for i in idx_A:
-                agents[i].state_A = SPREADER
-                agents[i].rumor_time_A = frame
+        # 正しい噂を遅れて流す
+        if frame == TRUE_RUMOR_START:
+            idx = np.random.choice(AGENTS_NUMBER, INITIAL_TRUE_SPREADER, replace=False)
+            for i in idx:
+                agents[i].state = TRUE_SPREADER
+                agents[i].rumor_time = frame
 
         # 移動
         for a in agents:
@@ -158,43 +168,33 @@ def run_simulation():
             for j, a2 in enumerate(agents):
                 if i == j:
                     continue
-                if a1.state_A == SPREADER:
-                    spread_rumor_A(a1, a2, frame)
-                if a1.state_B == SPREADER:
-                    spread_rumor_B(a1, a2, frame)
+                spread_false(a1, a2, frame)
+                spread_true(a1, a2, frame)
 
-        # 忘却
+        # 状態更新
         for a in agents:
-            check_stifler_A(a, frame)
-            check_stifler_B(a, frame)
+            update_state(a, frame)
+            correct_false(a)
 
-        # 正しい噂Aを信じたらデマBを非活性化
-        for a in agents:
-            if a.state_A in (SPREADER, STIFLER) and a.state_B == SPREADER:
-                a.state_B = STIFLER
-
-        # 人数カウント
-        count_A_I.append(sum(a.state_A == IGNORANT for a in agents))
-        count_A_S.append(sum(a.state_A == SPREADER for a in agents))
-        count_A_T.append(sum(a.state_A == STIFLER for a in agents))
-
-        count_B_I.append(sum(a.state_B == IGNORANT for a in agents))
-        count_B_S.append(sum(a.state_B == SPREADER for a in agents))
-        count_B_T.append(sum(a.state_B == STIFLER for a in agents))
+        # カウント
+        count_I.append(sum(a.state == IGNORANT for a in agents))
+        count_FS.append(sum(a.state == FALSE_SPREADER for a in agents))
+        count_FB.append(sum(a.state == FALSE_BELIEVER for a in agents))
+        count_TS.append(sum(a.state == TRUE_SPREADER for a in agents))
+        count_TB.append(sum(a.state == TRUE_BELIEVER for a in agents))
 
         # 履歴保存
         history.append([Agent(a.x, a.y) for a in agents])
         for h, a in zip(history[-1], agents):
-            h.state_A = a.state_A
-            h.state_B = a.state_B
+            h.state = a.state
 
-    return history, (count_A_I, count_A_S, count_A_T, count_B_I, count_B_S, count_B_T)
+    return history, (count_I, count_FS, count_FB, count_TS, count_TB)
 
 # ================================
 # 描画
 # ================================
 history, counts = run_simulation()
-count_A_I, count_A_S, count_A_T, count_B_I, count_B_S, count_B_T = counts
+count_I, count_FS, count_FB, count_TS, count_TB = counts
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -209,13 +209,11 @@ ax2.set_xlabel("Time")
 ax2.set_ylabel("Number of Agents")
 ax2.grid(True)
 
-# グラフの線色も見やすい色に統一
-line_A_S, = ax2.plot([], [], color="#E60026", label="A Spreader")
-line_B_S, = ax2.plot([], [], color="#0072B2", label="B Spreader")
-line_A_T, = ax2.plot([], [], color="#B00020", label="A Stifler")
-line_B_T, = ax2.plot([], [], color="#005082", label="B Stifler")
-line_A_I, = ax2.plot([], [], color="#FF99A0", label="A Ignorant")
-line_B_I, = ax2.plot([], [], color="#99C2FF", label="B Ignorant")
+line_I,  = ax2.plot([], [], color="#999999", label="Ignorant")
+line_FS, = ax2.plot([], [], color="#0072B2", label="False Spreader")
+line_FB, = ax2.plot([], [], color="#99C2FF", label="False Believer")
+line_TS, = ax2.plot([], [], color="#E60026", label="True Spreader")
+line_TB, = ax2.plot([], [], color="#FF99A0", label="True Believer")
 
 ax2.legend()
 
@@ -232,13 +230,11 @@ def animate(frame):
     ax1.set_title(f"Frame: {frame}")
     ax1.scatter(x, y, c=colors, s=30)
 
-    # グラフ更新
-    line_A_S.set_data(range(frame), count_A_S[:frame])
-    line_B_S.set_data(range(frame), count_B_S[:frame])
-    line_A_T.set_data(range(frame), count_A_T[:frame])
-    line_B_T.set_data(range(frame), count_B_T[:frame])
-    line_A_I.set_data(range(frame), count_A_I[:frame])
-    line_B_I.set_data(range(frame), count_B_I[:frame])
+    line_I.set_data(range(frame), count_I[:frame])
+    line_FS.set_data(range(frame), count_FS[:frame])
+    line_FB.set_data(range(frame), count_FB[:frame])
+    line_TS.set_data(range(frame), count_TS[:frame])
+    line_TB.set_data(range(frame), count_TB[:frame])
 
 ani = animation.FuncAnimation(fig, animate, frames=SIMULATION_TIME, interval=50)
 plt.show()
