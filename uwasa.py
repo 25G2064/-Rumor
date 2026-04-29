@@ -29,6 +29,17 @@ FALSE_SPREADER = 1
 FALSE_BELIEVER = 2
 TRUE_SPREADER = 3
 TRUE_BELIEVER = 4
+# ================================
+# エージェント設定（ここを変えるだけで実験条件を変更できる）
+# ================================
+class AgentConfig:
+    INTEREST_MIN = 0.0
+    INTEREST_MAX = 2.0
+
+    INFLUENCE_MIN = 0.5
+    INFLUENCE_MAX = 2.0
+
+    SPEED = 1.0
 
 # ================================
 # エージェント定義
@@ -41,13 +52,14 @@ class Agent:
         self.state = IGNORANT
         self.rumor_time = -1
 
-        self.interest = np.random.uniform(0.0, 2.0)
-        self.influence = np.random.uniform(0.5, 2.0)
+        # ★ ここが1か所にまとまる
+        self.interest = np.random.uniform(AgentConfig.INTEREST_MIN, AgentConfig.INTEREST_MAX)
+        self.influence = np.random.uniform(AgentConfig.INFLUENCE_MIN, AgentConfig.INFLUENCE_MAX)
 
     def move(self):
         angle = np.random.rand() * 2 * np.pi
-        self.x += AGENT_SPEED * np.cos(angle)
-        self.y += AGENT_SPEED * np.sin(angle)
+        self.x += AgentConfig.SPEED * np.cos(angle)
+        self.y += AgentConfig.SPEED * np.sin(angle)
         self.x = max(0, min(self.x, WIDTH))
         self.y = max(0, min(self.y, HEIGHT))
 
