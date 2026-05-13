@@ -41,8 +41,8 @@ class AgentConfig:
     INFLUENCE_MIN = 2.0
     INFLUENCE_MAX = 2.0
 
-    TRUST_MIN = 0.7   # ★信じやすさを下げる
-    TRUST_MAX = 0.9
+    TRUST_MIN = 0.1   # ★信じやすさを下げる
+    TRUST_MAX = 0.7
 
 # ============================================
 # 状態（5種類）
