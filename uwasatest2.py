@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+# ★ 日本語フォント設定（ここが重要）
+plt.rcParams['font.family'] = 'MS Gothic'
+
 # ============================================
 # SimulationConfig（実験条件を1か所に集約）
 # ============================================
@@ -252,12 +255,20 @@ ax1.set_xlim(0, SimulationConfig.WIDTH)
 ax1.set_ylim(0, SimulationConfig.HEIGHT)
 ax1.set_aspect('equal')
 
+# ★ 横軸を「日」表示に変更（48フレーム＝1日）
+frames_per_day = 48
+max_days = SimulationConfig.SIMULATION_TIME // frames_per_day
+
+ax2.set_xticks([d * frames_per_day for d in range(max_days + 1)])
+ax2.set_xticklabels([f"{d}日" for d in range(max_days + 1)])
+
 ax2.set_xlim(0, SimulationConfig.SIMULATION_TIME)
 ax2.set_ylim(0, SimulationConfig.AGENTS_NUMBER)
 ax2.set_title("Rumor Spread Over Time")
-ax2.set_xlabel("Time")
-ax2.set_ylabel("Number of Agents")
+ax2.set_xlabel("経過日数")
+ax2.set_ylabel("人数")
 ax2.grid(True)
+
 
 line_I,  = ax2.plot([], [], color="#999999", label="Ignorant")
 line_FS, = ax2.plot([], [], color="#0072B2", label="False Spreader")
