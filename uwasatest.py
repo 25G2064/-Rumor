@@ -16,8 +16,8 @@ class SimulationConfig:
 
     TRUE_RUMOR_START = 50
 
-    RUMOR_RADIUS = 3.0
-    BASE_SPREAD_PROBABILITY = 0.1
+    RUMOR_RADIUS = 1.0
+    BASE_SPREAD_PROBABILITY = 1.0
     BASE_FORGET_TIME = 30
     SIMULATION_TIME = 200
     AGENT_SPEED = 1.0
@@ -31,13 +31,13 @@ class SimulationConfig:
 # AgentConfig（個人差）
 # ============================================
 class AgentConfig:
-    INTEREST_MIN = 0.0
+    INTEREST_MIN = 1.0
     INTEREST_MAX = 2.0
 
     INFLUENCE_MIN = 0.5
     INFLUENCE_MAX = 2.0
 
-    TRUST_MIN = 0.2
+    TRUST_MIN = 1.0
     TRUST_MAX = 1.0
 
 # ============================================
