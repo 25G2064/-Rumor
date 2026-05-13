@@ -16,9 +16,9 @@ class SimulationConfig:
 
     TRUE_RUMOR_START = 50
 
-    RUMOR_RADIUS = 1.0
+    RUMOR_RADIUS = 2.0
     BASE_SPREAD_PROBABILITY = 1.0
-    BASE_FORGET_TIME = 30
+    BASE_FORGET_TIME = 6000
     SIMULATION_TIME = 400
     AGENT_SPEED = 1.0
 
@@ -29,14 +29,14 @@ class SimulationConfig:
 # AgentConfig（個人差）
 # ============================================
 class AgentConfig:
-    INTEREST_MIN = 0.5
-    INTEREST_MAX = 2.0
+    INTEREST_MIN = 1.0
+    INTEREST_MAX = 1.0
 
-    INFLUENCE_MIN = 0.5
-    INFLUENCE_MAX = 2.0
+    INFLUENCE_MIN = 1.0
+    INFLUENCE_MAX = 1.0
 
-    TRUST_MIN = 0.6
-    TRUST_MAX = 0.6
+    TRUST_MIN = 1.0
+    TRUST_MAX = 1.0
 
 # ============================================
 # 状態（5種類）
@@ -108,17 +108,18 @@ def spread_false(a1, a2, frame):
         prob = SimulationConfig.BASE_SPREAD_PROBABILITY * a1.interest * a1.influence * a2.trust
 
         if dist < effective_radius and np.random.rand() < prob:
-            if a2.interest > 1.0:
+            if a2.interest >= 1.0:
                 a2.state = FALSE_SPREADER
             else:
                 a2.state = FALSE_BELIEVER
             a2.rumor_time = frame
 
 # ============================================
-# 真実の伝播
+# 真実の伝播（★修正済み）
 # ============================================
 def spread_true(a1, a2, frame):
-    if a1.state == TRUE_SPREADER and a2.state in (IGNORANT, FALSE_BELIEVER):
+    # FALSE_SPREADER も対象に追加
+    if a1.state == TRUE_SPREADER and a2.state in (IGNORANT, FALSE_BELIEVER, FALSE_SPREADER):
 
         effective_radius = SimulationConfig.RUMOR_RADIUS * a1.influence
         dist = np.hypot(a1.x - a2.x, a1.y - a2.y)
@@ -126,17 +127,17 @@ def spread_true(a1, a2, frame):
         prob = SimulationConfig.BASE_SPREAD_PROBABILITY * a1.interest * a1.influence * 1.2 * a2.trust
 
         if dist < effective_radius and np.random.rand() < prob:
-            if a2.interest > 1.0:
+
+            # デマ状態は真実に上書き
+            if a2.state in (FALSE_SPREADER, FALSE_BELIEVER):
                 a2.state = TRUE_SPREADER
             else:
-                a2.state = TRUE_BELIEVER
-            a2.rumor_time = frame
+                if a2.interest >= 1.0:
+                    a2.state = TRUE_SPREADER
+                else:
+                    a2.state = TRUE_BELIEVER
 
-# ============================================
-# デマの否定（※この関数は実質使われていない）
-# ============================================
-def correct_false(agent):
-    pass
+            a2.rumor_time = frame
 
 # ============================================
 # 忘却
@@ -161,7 +162,7 @@ def get_color(agent):
     if agent.state == TRUE_BELIEVER: return "#FF99A0"
 
 # ============================================
-# シミュレーション本体（★修正済み）
+# シミュレーション本体
 # ============================================
 def run_simulation():
     agents = initialize_simulation()
@@ -212,7 +213,6 @@ def run_simulation():
         for h, a in zip(history[-1], agents):
             h.state = a.state
 
-    # ★追加：終了時点の人数を集計
     remaining_false = count_FS[-1] + count_FB[-1]
     remaining_true = count_TS[-1] + count_TB[-1]
     remaining_ignorant = count_I[-1]
