@@ -20,8 +20,8 @@ class SimulationConfig:
 
     TRUE_RUMOR_START = 144
 
-    RUMOR_RADIUS = 2.0
-    BASE_SPREAD_PROBABILITY = 0.2   # ★確率を下げて伝わりすぎを防ぐ
+    RUMOR_RADIUS = 1.0
+    BASE_SPREAD_PROBABILITY = 1.0
     BASE_FORGET_TIME = 672
     SIMULATION_TIME = 672
     AGENT_SPEED = 1.0
@@ -29,7 +29,7 @@ class SimulationConfig:
     HIGH_INFLUENCE_RATIO = 0.1
     HIGH_TRUST_RATIO = 0.1
 
-    TRUE_SPREADER_PROB = 0.1
+    TRUE_SPREADER_PROB = 0.01
 
 # ============================================
 # AgentConfig（個人差）
@@ -38,11 +38,11 @@ class AgentConfig:
     INTEREST_MIN = 1.0
     INTEREST_MAX = 1.0
 
-    INFLUENCE_MIN = 1.0
-    INFLUENCE_MAX = 1.0
+    INFLUENCE_MIN = 2.0
+    INFLUENCE_MAX = 2.0
 
-    TRUST_MIN = 0.3   # ★信じやすさを下げる
-    TRUST_MAX = 0.6
+    TRUST_MIN = 0.7   # ★信じやすさを下げる
+    TRUST_MAX = 0.9
 
 # ============================================
 # 状態（5種類）
@@ -113,7 +113,7 @@ def spread_false(a1, a2, frame, counters):
         dist = np.hypot(a1.x - a2.x, a1.y - a2.y)
 
         if dist < effective_radius:
-            prob = SimulationConfig.BASE_SPREAD_PROBABILITY * a1.interest * a1.influence * a2.trust
+            prob = SimulationConfig.BASE_SPREAD_PROBABILITY * a1.interest * a2.trust
             prob = min(prob, 1.0)
 
             if np.random.rand() < prob:
@@ -137,7 +137,7 @@ def spread_true(a1, a2, frame, counters):
         dist = np.hypot(a1.x - a2.x, a1.y - a2.y)
 
         if dist < effective_radius:
-            prob = SimulationConfig.BASE_SPREAD_PROBABILITY * a1.interest * a1.influence * a2.trust
+            prob = SimulationConfig.BASE_SPREAD_PROBABILITY * a1.interest * a2.trust
             prob = min(prob, 1.0)
 
             if np.random.rand() < prob:
