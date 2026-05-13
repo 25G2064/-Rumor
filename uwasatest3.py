@@ -11,9 +11,9 @@ plt.rcParams['axes.unicode_minus'] = False
 # SimulationConfig（実験条件を1か所に集約）
 # ============================================
 class SimulationConfig:
-    WIDTH = 100
-    HEIGHT = 100
-    AGENTS_NUMBER = 1200
+    WIDTH = 75
+    HEIGHT = 75
+    AGENTS_NUMBER = 675
 
     INITIAL_FALSE_SPREADER = 66
     INITIAL_TRUE_SPREADER = 6
@@ -30,7 +30,7 @@ class SimulationConfig:
     HIGH_TRUST_RATIO = 0.1
 
     # ★ 真実を広める人になる確率（0〜1）
-    TRUE_SPREADER_PROB = 0.01
+    TRUE_SPREADER_PROB = 0.1
 
 # ============================================
 # AgentConfig（個人差）
