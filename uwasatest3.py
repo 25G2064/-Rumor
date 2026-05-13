@@ -11,23 +11,26 @@ plt.rcParams['axes.unicode_minus'] = False
 # SimulationConfig（実験条件を1か所に集約）
 # ============================================
 class SimulationConfig:
-    WIDTH = 50
-    HEIGHT = 50
-    AGENTS_NUMBER = 300
+    WIDTH = 100
+    HEIGHT = 100
+    AGENTS_NUMBER = 1200
 
-    INITIAL_FALSE_SPREADER = 33
-    INITIAL_TRUE_SPREADER = 3
+    INITIAL_FALSE_SPREADER = 66
+    INITIAL_TRUE_SPREADER = 6
 
-    TRUE_RUMOR_START = 50
+    TRUE_RUMOR_START = 144
 
     RUMOR_RADIUS = 2.0
     BASE_SPREAD_PROBABILITY = 1.0
-    BASE_FORGET_TIME = 6
-    SIMULATION_TIME = 400
+    BASE_FORGET_TIME = 672
+    SIMULATION_TIME = 672
     AGENT_SPEED = 1.0
 
     HIGH_INFLUENCE_RATIO = 0.1
     HIGH_TRUST_RATIO = 0.1
+
+    # ★ 真実を広める人になる確率（0〜1）
+    TRUE_SPREADER_PROB = 0.01
 
 # ============================================
 # AgentConfig（個人差）
@@ -39,8 +42,8 @@ class AgentConfig:
     INFLUENCE_MIN = 1.0
     INFLUENCE_MAX = 1.0
 
-    TRUST_MIN = 1.0
-    TRUST_MAX = 1.0
+    TRUST_MIN = 0.7
+    TRUST_MAX = 0.9
 
 # ============================================
 # 状態（5種類）
@@ -122,7 +125,7 @@ def spread_false(a1, a2, frame):
             a2.rumor_time = frame
 
 # ============================================
-# 真実の伝播（デマ拡散者も真実拡散者に変化）
+# 真実の伝播（確率で TRUE_SPREADER になる）
 # ============================================
 def spread_true(a1, a2, frame):
     if a1.state == TRUE_SPREADER and a2.state in (IGNORANT, FALSE_BELIEVER, FALSE_SPREADER):
@@ -134,22 +137,19 @@ def spread_true(a1, a2, frame):
 
         if dist < effective_radius and np.random.rand() < prob:
 
-            if a2.state in (FALSE_SPREADER, FALSE_BELIEVER):
+            # ★ 確率で TRUE_SPREADER になる
+            if np.random.rand() < SimulationConfig.TRUE_SPREADER_PROB:
                 a2.state = TRUE_SPREADER
             else:
-                if a2.interest >= 1.0:
-                    a2.state = TRUE_SPREADER
-                else:
-                    a2.state = TRUE_BELIEVER
+                a2.state = TRUE_BELIEVER
 
             a2.rumor_time = frame
 
 # ============================================
-# 忘却（★最初の3人は忘却しない）
+# 忘却（★最初の2人は忘却しない）
 # ============================================
 def update_state(agent, frame, initial_true_ids):
 
-    # ★ 最初の真実スプレッダーは忘却しない
     if id(agent) in initial_true_ids:
         return
 
@@ -185,14 +185,12 @@ def run_simulation():
 
     for frame in range(SimulationConfig.SIMULATION_TIME):
 
-        # ★ 真実を流す（最初の3人を登録）
+        # ★ 真実を流す（最初の2人を登録）
         if frame == SimulationConfig.TRUE_RUMOR_START:
             idx = np.random.choice(SimulationConfig.AGENTS_NUMBER, SimulationConfig.INITIAL_TRUE_SPREADER, replace=False)
             for i in idx:
                 agents[i].state = TRUE_SPREADER
                 agents[i].rumor_time = frame
-
-                # ★ この3人は永遠にスプレッダー
                 initial_true_ids.append(id(agents[i]))
 
         for a in agents:
