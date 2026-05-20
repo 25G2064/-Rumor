@@ -24,7 +24,7 @@ class SimulationConfig:
     BASE_SPREAD_PROBABILITY = 1.0
     BASE_FORGET_TIME = 672
     SIMULATION_TIME = 672
-    AGENT_SPEED = 1.0
+    AGENT_SPEED = 3.0
 
     HIGH_INFLUENCE_RATIO = 0.1
     HIGH_TRUST_RATIO = 0.1
@@ -38,11 +38,11 @@ class AgentConfig:
     INTEREST_MIN = 1.0
     INTEREST_MAX = 1.0
 
-    INFLUENCE_MIN = 2.0
-    INFLUENCE_MAX = 2.0
+    INFLUENCE_MIN = 4.0
+    INFLUENCE_MAX = 4.0
 
-    TRUST_MIN = 0.1   # ★信じやすさを下げる
-    TRUST_MAX = 0.7
+    TRUST_MIN = 0.7   # ★信じやすさを下げる
+    TRUST_MAX = 0.9
 
 # ============================================
 # 状態（5種類）
@@ -117,14 +117,12 @@ def spread_false(a1, a2, frame, counters):
             prob = min(prob, 1.0)
 
             if np.random.rand() < prob:
-                # 伝わった
                 if a2.interest >= 1.0:
                     a2.state = FALSE_SPREADER
                 else:
                     a2.state = FALSE_BELIEVER
                 a2.rumor_time = frame
             else:
-                # ★伝わらなかった
                 counters["false_fail"] += 1
 
 # ============================================
@@ -141,7 +139,6 @@ def spread_true(a1, a2, frame, counters):
             prob = min(prob, 1.0)
 
             if np.random.rand() < prob:
-                # 伝わった
                 if np.random.rand() < SimulationConfig.TRUE_SPREADER_PROB:
                     a2.state = TRUE_SPREADER
                 else:
@@ -149,7 +146,6 @@ def spread_true(a1, a2, frame, counters):
                 a2.rumor_time = frame
                 counters["true_success"] += 1
             else:
-                # ★伝わらなかった
                 counters["true_fail"] += 1
 
 # ============================================
@@ -210,7 +206,6 @@ def run_simulation():
             for j, a2 in enumerate(agents):
                 if i == j: continue
 
-                before = a2.state
                 spread_false(a1, a2, frame, counters)
                 spread_true(a1, a2, frame, counters)
 
@@ -236,6 +231,8 @@ def run_simulation():
     remaining_true = count_TS[-1] + count_TB[-1]
     remaining_ignorant = count_I[-1]
 
+    remaining_true_spreader = count_TS[-1]   # ★追加
+
     return (
         history,
         (count_I, count_FS, count_FB, count_TS, count_TB),
@@ -243,14 +240,16 @@ def run_simulation():
         counters,
         remaining_false,
         remaining_true,
-        remaining_ignorant
+        remaining_ignorant,
+        remaining_true_spreader
     )
 
 # ============================================
 # 描画 & 出力
 # ============================================
 (history, counts, false_end_time, counters,
- remaining_false, remaining_true, remaining_ignorant) = run_simulation()
+ remaining_false, remaining_true, remaining_ignorant,
+ remaining_true_spreader) = run_simulation()
 
 count_I, count_FS, count_FB, count_TS, count_TB = counts
 
@@ -262,6 +261,7 @@ print("デマが伝わらなかった接触:", counters["false_fail"])
 print("残ったデマ人数:", remaining_false)
 print("残った真実側:", remaining_true)
 print("未接触:", remaining_ignorant)
+print("残った真実の伝達者（TRUE_SPREADER）:", remaining_true_spreader)
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
